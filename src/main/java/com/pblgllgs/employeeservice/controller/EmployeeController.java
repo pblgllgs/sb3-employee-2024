@@ -6,6 +6,7 @@ package com.pblgllgs.employeeservice.controller;
  *
  */
 
+import com.pblgllgs.employeeservice.dto.APIResponseDto;
 import com.pblgllgs.employeeservice.dto.EmployeeDto;
 import com.pblgllgs.employeeservice.service.EmployeeService;
 import lombok.RequiredArgsConstructor;
@@ -29,7 +30,7 @@ public class EmployeeController {
     }
 
     @GetMapping("/{employeeId}")
-    public ResponseEntity<EmployeeDto> getEmployeeById(@PathVariable("employeeId") Long employeeId) {
+    public ResponseEntity<APIResponseDto> getEmployeeById(@PathVariable("employeeId") Long employeeId) {
         return new ResponseEntity<>(employeeService.getEmployee(employeeId), HttpStatus.OK);
     }
 

@@ -6,13 +6,18 @@ package com.pblgllgs.employeeservice.service.impl;
  *
  */
 
+import com.pblgllgs.employeeservice.clients.DepartmentClient;
+import com.pblgllgs.employeeservice.dto.APIResponseDto;
+import com.pblgllgs.employeeservice.dto.DepartmentDto;
 import com.pblgllgs.employeeservice.dto.EmployeeDto;
 import com.pblgllgs.employeeservice.entity.Employee;
+import com.pblgllgs.employeeservice.enums.Constants;
 import com.pblgllgs.employeeservice.exception.ResourceNotFoundException;
 import com.pblgllgs.employeeservice.repository.EmployeeRepository;
 import com.pblgllgs.employeeservice.service.EmployeeService;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -23,12 +28,13 @@ import java.util.Optional;
 public class EmployeeServiceImpl implements EmployeeService {
     private final EmployeeRepository employeeRepository;
     private final ModelMapper modelMapper;
+    private final DepartmentClient departmentClient;
 
     @Override
     public EmployeeDto createEmployee(EmployeeDto employeeDto) {
         Optional<Employee> employeeOptional = employeeRepository.findByEmail(employeeDto.getEmail());
         if (employeeOptional.isPresent()) {
-            throw new ResourceNotFoundException("Employee not found");
+            throw new ResourceNotFoundException(Constants.RESOURCE_NOT_FOUND.getValue());
         }
         Employee employee = modelMapper.map(employeeDto, Employee.class);
         Employee savedEmployee = employeeRepository.save(employee);
@@ -36,12 +42,16 @@ public class EmployeeServiceImpl implements EmployeeService {
     }
 
     @Override
-    public EmployeeDto getEmployee(Long employeeId) {
+    public APIResponseDto getEmployee(Long employeeId) {
         Optional<Employee> employeeOptional = employeeRepository.findById(employeeId);
         if (employeeOptional.isEmpty()) {
-            throw new ResourceNotFoundException("Employee not found");
+            throw new ResourceNotFoundException(Constants.RESOURCE_NOT_FOUND.getValue());
         }
-        return modelMapper.map(employeeOptional.get(), EmployeeDto.class);
+        ResponseEntity<DepartmentDto> department = departmentClient.getDepartment(employeeOptional.get().getDepartmentCode());
+        return new APIResponseDto(
+                modelMapper.map(employeeOptional.get(), EmployeeDto.class),
+                department.getBody()
+        );
     }
 
     @Override
@@ -55,7 +65,7 @@ public class EmployeeServiceImpl implements EmployeeService {
     public EmployeeDto updateEmployee(Long employeeId, EmployeeDto employeeDto) {
         Optional<Employee> employeeOptional = employeeRepository.findById(employeeId);
         if (employeeOptional.isEmpty()) {
-            throw new ResourceNotFoundException("Employee not found");
+            throw new ResourceNotFoundException(Constants.RESOURCE_NOT_FOUND.getValue());
         }
         Employee employeeToUpdate = employeeOptional.get();
         employeeToUpdate.setEmail(employeeDto.getEmail());
@@ -69,7 +79,7 @@ public class EmployeeServiceImpl implements EmployeeService {
     public void deleteEmployee(Long employeeId) {
         Optional<Employee> employeeOptional = employeeRepository.findById(employeeId);
         if (employeeOptional.isEmpty()) {
-            throw new ResourceNotFoundException("Employee not found");
+            throw new ResourceNotFoundException(Constants.RESOURCE_NOT_FOUND.getValue());
         }
         employeeRepository.deleteById(employeeId);
     }
