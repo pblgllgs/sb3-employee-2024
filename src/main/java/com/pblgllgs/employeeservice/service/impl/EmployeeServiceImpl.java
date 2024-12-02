@@ -15,7 +15,9 @@ import com.pblgllgs.employeeservice.enums.Constants;
 import com.pblgllgs.employeeservice.exception.ResourceNotFoundException;
 import com.pblgllgs.employeeservice.repository.EmployeeRepository;
 import com.pblgllgs.employeeservice.service.EmployeeService;
+import io.github.resilience4j.retry.annotation.Retry;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -25,6 +27,7 @@ import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class EmployeeServiceImpl implements EmployeeService {
     private final EmployeeRepository employeeRepository;
     private final ModelMapper modelMapper;
@@ -41,12 +44,20 @@ public class EmployeeServiceImpl implements EmployeeService {
         return modelMapper.map(savedEmployee, EmployeeDto.class);
     }
 
+    //    @CircuitBreaker(
+//            name = "${spring.application.name}", fallbackMethod = "getDefaultDepartment"
+//    )
+    @Retry(
+            name = "${spring.application.name}",
+            fallbackMethod = "getDefaultDepartment"
+    )
     @Override
     public APIResponseDto getEmployee(Long employeeId) {
         Optional<Employee> employeeOptional = employeeRepository.findById(employeeId);
         if (employeeOptional.isEmpty()) {
             throw new ResourceNotFoundException(Constants.RESOURCE_NOT_FOUND.getValue());
         }
+        log.info("getEmployee - Get employee with id: {}", employeeId);
         ResponseEntity<DepartmentDto> department = departmentClient.getDepartment(employeeOptional.get().getDepartmentCode());
         return new APIResponseDto(
                 modelMapper.map(employeeOptional.get(), EmployeeDto.class),
@@ -84,5 +95,21 @@ public class EmployeeServiceImpl implements EmployeeService {
         employeeRepository.deleteById(employeeId);
     }
 
-
+    public APIResponseDto getDefaultDepartment(Long employeeId, Exception e) {
+        log.info("getDefaultDepartment - Get employee with id: {}", employeeId);
+        Optional<Employee> employeeOptional = employeeRepository.findById(employeeId);
+        if (employeeOptional.isEmpty()) {
+            throw new ResourceNotFoundException(Constants.RESOURCE_NOT_FOUND.getValue());
+        }
+        DepartmentDto departmentDtoDefault = new DepartmentDto(
+                123L,
+                "dev",
+                "DEV-001",
+                "dev-department"
+        );
+        return new APIResponseDto(
+                modelMapper.map(employeeOptional.get(), EmployeeDto.class),
+                departmentDtoDefault
+        );
+    }
 }
