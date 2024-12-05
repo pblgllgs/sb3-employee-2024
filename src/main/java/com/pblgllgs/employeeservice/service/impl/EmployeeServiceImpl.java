@@ -7,9 +7,11 @@ package com.pblgllgs.employeeservice.service.impl;
  */
 
 import com.pblgllgs.employeeservice.clients.DepartmentClient;
+import com.pblgllgs.employeeservice.clients.OrganizationClient;
 import com.pblgllgs.employeeservice.dto.APIResponseDto;
 import com.pblgllgs.employeeservice.dto.DepartmentDto;
 import com.pblgllgs.employeeservice.dto.EmployeeDto;
+import com.pblgllgs.employeeservice.dto.OrganizationDto;
 import com.pblgllgs.employeeservice.entity.Employee;
 import com.pblgllgs.employeeservice.enums.Constants;
 import com.pblgllgs.employeeservice.exception.ResourceNotFoundException;
@@ -22,6 +24,7 @@ import org.modelmapper.ModelMapper;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -32,6 +35,7 @@ public class EmployeeServiceImpl implements EmployeeService {
     private final EmployeeRepository employeeRepository;
     private final ModelMapper modelMapper;
     private final DepartmentClient departmentClient;
+    private final OrganizationClient organizationClient;
 
     @Override
     public EmployeeDto createEmployee(EmployeeDto employeeDto) {
@@ -57,11 +61,18 @@ public class EmployeeServiceImpl implements EmployeeService {
         if (employeeOptional.isEmpty()) {
             throw new ResourceNotFoundException(Constants.RESOURCE_NOT_FOUND.getValue());
         }
-        log.info("getEmployee - Get employee with id: {}", employeeId);
+        log.info("Department {}", employeeOptional.get().getDepartmentCode());
+        log.info("Organization: {}", employeeOptional.get().getOrganizationCode());
+
+        ResponseEntity<OrganizationDto> organization = organizationClient.getOrganizationByCode(employeeOptional.get().getOrganizationCode());
+        log.info("organization client - Get employee with id: {}, organization object {}", employeeId, organization.getBody());
         ResponseEntity<DepartmentDto> department = departmentClient.getDepartment(employeeOptional.get().getDepartmentCode());
+        log.info("department client - Get employee with id: {}, department object {}", employeeId, department.getBody());
         return new APIResponseDto(
                 modelMapper.map(employeeOptional.get(), EmployeeDto.class),
-                department.getBody()
+                department.getBody(),
+                organization.getBody()
+
         );
     }
 
@@ -82,6 +93,7 @@ public class EmployeeServiceImpl implements EmployeeService {
         employeeToUpdate.setEmail(employeeDto.getEmail());
         employeeToUpdate.setFirstName(employeeDto.getFirstName());
         employeeToUpdate.setLastName(employeeDto.getLastName());
+        employeeToUpdate.setDepartmentCode(employeeDto.getDepartmentCode());
         Employee savedEmployee = employeeRepository.save(employeeToUpdate);
         return modelMapper.map(savedEmployee, EmployeeDto.class);
     }
@@ -107,9 +119,18 @@ public class EmployeeServiceImpl implements EmployeeService {
                 "DEV-001",
                 "dev-department"
         );
+
+        OrganizationDto organizationDtoDefault = new OrganizationDto(
+                123L,
+                "org",
+                "description",
+                "QAZ-123",
+                LocalDateTime.now()
+        );
         return new APIResponseDto(
                 modelMapper.map(employeeOptional.get(), EmployeeDto.class),
-                departmentDtoDefault
+                departmentDtoDefault,
+                organizationDtoDefault
         );
     }
 }
